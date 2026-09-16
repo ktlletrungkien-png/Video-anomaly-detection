@@ -1,0 +1,56 @@
+# Local build artefacts
+.codex_build/
+
+# Datasets and derived media (too large for source control)
+data/
+artifacts/
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Experiment and application-local state
+logs/
+runs/
+wandb/
+mlruns/
+lightning_logs/
+tensorboard/
+*.log
+.env
+.env.*
+!.env.example
+
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+
+# Regenerable report export; the canonical slide deck is kept in report/
+report/output/
+prompt/
+report/output/
+./venv/
+data/
+atifacts/
