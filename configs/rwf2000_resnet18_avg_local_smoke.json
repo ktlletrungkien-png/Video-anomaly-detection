@@ -1,0 +1,16 @@
+{
+  "batch_size": 2,
+  "checkpoint_rule": "min_validation_loss_earliest_tie",
+  "deterministic": true,
+  "epochs": 1,
+  "freeze_backbone": true,
+  "height": 32,
+  "learning_rate": 0.001,
+  "num_frames": 16,
+  "num_workers": 0,
+  "purpose": "local_smoke_only",
+  "seed": 42,
+  "weight_decay": 0.0001,
+  "weights": null,
+  "width": 32
+}

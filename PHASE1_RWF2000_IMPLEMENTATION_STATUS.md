@@ -3,9 +3,226 @@
 ## Phase 1 — RWF-2000 Violence Data Pipeline Foundation
 
 **Project:** Hybrid Surveillance-Video Violence and Anomaly Detection  
-**Ngày tổng hợp:** 16/09/2026  
-**Phạm vi báo cáo:** trạng thái repository sau iteration đầu tiên dành cho RWF-2000 data pipeline  
+**Ngày tổng hợp ban đầu:** 16/09/2026
+
+**Cập nhật gần nhất:** 06/10/2026
+
+**Phạm vi báo cáo:** trạng thái RWF-2000 data pipeline sau real-data verification trên Kaggle
+
 **Nguồn định hướng có hiệu lực:** Section 0 của `PROJECT_CONTEXT.md` và `AGENTS.md`
+
+---
+
+## 0. Trạng thái hiện hành — Phase 1 hoàn thành
+
+> Phần 0 này là trạng thái hiện hành và thay thế các kết luận runtime cũ trong phần lịch sử bên dưới. Các mục từ phần 1 trở đi được giữ lại để bảo toàn quá trình implementation local trước khi dataset thật được attach.
+
+### 0.1. Kết luận
+
+**Phase 1 — RWF-2000 real-data pipeline verification: COMPLETE.**
+
+Pipeline đã được chạy end-to-end trên RWF-2000 thật trong Kaggle Notebook:
+
+```text
+RWF-2000 thật
+-> dataset layout và class mapping
+-> video decoding và metadata inspection
+-> deterministic manifest
+-> train/validation/held-out protocol
+-> RWF2000Dataset
+-> 16 ordered frames
+-> tensor [16, 3, 224, 224]
+-> DataLoader
+-> batch [B, 16, 3, 224, 224]
+```
+
+Kaggle Version #2 đã `Save & Run All` thành công từ đầu trong fresh run.
+
+Chưa có model, training, checkpoint hoặc model metric nào được tạo.
+
+### 0.2. Nguồn bằng chứng và phạm vi xác nhận
+
+Các kết quả dưới đây được ghi nhận từ báo cáo Kaggle Version #2 do người dùng cung cấp ngày 06/10/2026, chạy trên Git commit:
+
+```text
+bbe275956648aa2830404deb23b723e93c1ea29c
+```
+
+Các artifact hiện nằm trên Kaggle, chưa được đưa vào repository local:
+
+- `/kaggle/working/rwf2000_phase1/inspection.json`
+- `/kaggle/working/rwf2000_phase1/rwf2000_manifest.csv`
+- `/kaggle/working/rwf2000_phase1/rwf2000_manifest.json`
+
+Repository không lưu dataset hoặc các artifact lớn. Báo cáo này ghi nhận kết quả của run Kaggle; không tuyên bố đã tự tái chạy dataset thật ở local.
+
+### 0.3. Môi trường Kaggle đã đo
+
+| Thành phần | Giá trị |
+|---|---|
+| Platform | Linux 6.18.48+, x86_64, glibc 2.39 |
+| Python | 3.13.15 |
+| PyTorch | 2.11.0+cpu |
+| OpenCV | 4.14.0 |
+| Accelerator | None |
+| CUDA | Không khả dụng, đúng với Phase 1 CPU-only |
+
+Repository được clone vào `/kaggle/working/Video-anomaly-detection`. Editable install `pip install -e ".[test]"` thành công, package import được và CLI có hai subcommand `inspect`/`manifest`.
+
+`pip check` không sạch vì conflict giữa các package có sẵn trong Kaggle base image (`bigframes`, `google-colab`, `dopamine-rl`, `moviepy`). Đây là caveat của môi trường Kaggle, không phải lỗi đã quan sát từ dependency trực tiếp của `rwf2000-pipeline`. Bằng chứng hỗ trợ gồm package import thành công, toàn bộ unit tests pass, CLI hoạt động và real-data pipeline pass.
+
+### 0.4. Dataset layout đã đo
+
+Dataset được attach từ Kaggle input của owner Dania Zehra:
+
+```text
+/kaggle/input/datasets/daniazehra/rwf-2000/RWF-2000
+├── train
+│   ├── Fight
+│   └── NonFight
+└── val
+    ├── Fight
+    └── NonFight
+```
+
+Protocol đã khóa cho bản dataset này:
+
+```text
+source train
+-> derived train + derived val
+
+source val
+-> derived test (held-out, không dùng để tuning)
+```
+
+Tên thư mục nguồn `val` không được hiểu là tuning validation trong project. Nó được giữ nguyên làm held-out same-domain evaluation partition.
+
+### 0.5. Kết quả inspection thật
+
+| Source split | Non-violence | Violence | Tổng | Short clips | Decode error/mismatch |
+|---|---:|---:|---:|---:|---:|
+| `train` | 800 | 800 | 1.600 | 0 | 0 |
+| `val` (held-out) | 200 | 200 | 400 | 0 | 0 |
+| **Tổng** | **1.000** | **1.000** | **2.000** | **0** | **0** |
+
+Tất cả 2.000 clip được báo cáo ở 30 FPS. Resolution đa dạng; các resolution phổ biến gồm 320x240, 1280x720, 640x360, 480x360 và một số video 1920x1080.
+
+Kết luận inspection:
+
+- Hai class cân bằng trong cả source training và held-out partition.
+- Không có clip dưới 16 decoded frames.
+- Không có video open/decode failure được quan sát.
+- Không có metadata/decode frame-count mismatch được quan sát.
+- Sự đa dạng resolution được ghi nhận; baseline ban đầu vẫn giữ direct resize 224x224 để không thay đổi protocol sau khi nhìn test, còn letterbox/aspect-ratio preservation chỉ được xem là một thay đổi có kiểm soát sau baseline.
+
+### 0.6. Manifest đã khóa
+
+Manifest configuration:
+
+| Trường | Giá trị |
+|---|---|
+| Schema | `rwf2000-manifest-v1` |
+| Seed | `42` |
+| Validation fraction | `0.2` |
+| Non-violence | `0` |
+| Violence | `1` |
+
+Derived assignments:
+
+| Derived split | Non-violence | Violence | Tổng |
+|---|---:|---:|---:|
+| `train` | 640 | 640 | 1.280 |
+| `val` | 160 | 160 | 320 |
+| `test` | 200 | 200 | 400 |
+| **Tổng** | **1.000** | **1.000** | **2.000** |
+
+Protocol check đã pass:
+
+- Derived validation chỉ lấy từ source `train`.
+- Toàn bộ source `val` được giữ trong derived `test`.
+- Filesystem order không quyết định assignment.
+- Seed, validation fraction, schema và label mapping đã được lưu.
+
+Phạm vi phát biểu leakage phải được giữ chính xác: manifest đã bảo vệ train/validation/held-out assignment ở cấp path/clip theo implementation hiện tại. Source-video grouping, content duplicate, perceptual duplicate và provenance chưa được xác minh vì dataset không cung cấp metadata tương ứng và pipeline chưa chạy content hashing.
+
+### 0.7. Runtime verification
+
+Kết quả unit tests trên Kaggle:
+
+```text
+17 passed in 2.12s
+```
+
+Real sample đã kiểm tra:
+
+| Trường | Kết quả |
+|---|---|
+| Dataset records trong derived train | 1.280 |
+| Sample path | `train/Fight/-1l5631l3fg_0.avi` |
+| Label | `1.0` / Violence |
+| Tensor shape | `[16, 3, 224, 224]` |
+| Tensor dtype | `torch.float32` |
+| Finite tensor | Pass |
+| Ordered indices | `[0, 9, 19, 29, 39, 49, 59, 69, 79, 89, 99, 109, 119, 129, 139, 149]` |
+
+Real DataLoader batch:
+
+| Trường | Kết quả |
+|---|---|
+| Batch shape | `[2, 16, 3, 224, 224]` |
+| Tensor dtype | `torch.float32` |
+| Labels | `[1.0, 1.0]` |
+| Finite tensor | Pass |
+
+Batch có hai nhãn giống nhau không phải lỗi vì smoke test dùng `shuffle=False` và chỉ kiểm tra wiring/contract, không kiểm tra class balance từng batch.
+
+Trong interactive kernel, editable install ban đầu chưa được nhận ngay nên `REPO_DIR / "src"` đã được thêm vào `sys.path`. Package vẫn import được trong Python process mới. Với notebook tiếp theo, nên cài package trước mọi import và restart kernel/session khi cần, thay vì coi `sys.path` workaround là behavior của core package.
+
+### 0.8. Artifacts và Save & Run All
+
+| Artifact | Kích thước báo cáo |
+|---|---:|
+| `inspection.json` | 794,14 KB |
+| `rwf2000_manifest.csv` | 363,21 KB |
+| `rwf2000_manifest.json` | 0,60 KB |
+
+Version #1 thất bại vì notebook coi `pip check` exit code 1 của Kaggle base image là fatal. Cell sau đó được điều chỉnh để ghi nhận caveat mà không che lỗi install/import/test của project.
+
+Kaggle từng báo `ConcurrencyViolation` và `Sequence number must match Draft record`; đây là lỗi đồng bộ notebook. Sau refresh và chạy lại, Version #2 hoàn thành thành công và giữ đủ artifacts.
+
+### 0.9. Những gì chưa thực hiện
+
+- Chưa implement `ResNet18 + temporal average pooling`.
+- Chưa có training loop, optimizer, scheduler hoặc checkpoint.
+- Chưa chạy one-batch overfit sanity check.
+- Chưa có Accuracy, Precision, Recall, F1, ROC-AUC hoặc confusion matrix của project.
+- Chưa chọn threshold bằng derived validation.
+- Chưa đánh giá derived test.
+- Chưa implement Temporal Transformer.
+- Chưa implement lightweight anomaly branch cho Ped2/Avenue.
+- Chưa kiểm tra source-video provenance hoặc content duplicates.
+
+### 0.10. Quyết định chuyển phase
+
+Không còn blocker data-pipeline trước baseline. Bước tiếp theo là Phase 2:
+
+```text
+16 RGB frames
+-> pretrained ResNet18 per frame
+-> [B, T, 512] frame features
+-> temporal average pooling
+-> [B, 512]
+-> linear classifier
+-> one violence logit per clip
+```
+
+Kế hoạch chi tiết được lưu trong `PHASE2_RWF2000_BASELINE_PLAN.md`.
+
+---
+
+# LỊCH SỬ IMPLEMENTATION LOCAL TRƯỚC KAGGLE
+
+Các phần bên dưới phản ánh snapshot ngày 16/09/2026. Những câu như “pytest chưa chạy”, “dependency chưa cài” hoặc “RWF-2000 thật chưa được inspect” chỉ đúng tại thời điểm lịch sử đó và đã được thay thế bởi Section 0 ở trên.
 
 ---
 

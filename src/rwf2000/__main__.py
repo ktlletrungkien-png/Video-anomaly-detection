@@ -1,4 +1,4 @@
-"""Command line entry point: ``python -m rwf2000 inspect|manifest``."""
+"""Command line entry point for Phase 1 and Phase 2 utilities."""
 
 from __future__ import annotations
 
@@ -6,12 +6,9 @@ import argparse
 import json
 from pathlib import Path
 
-from .inspection import inspect_dataset
-from .manifest import build_manifest
-
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="RWF-2000 Phase 1 data-pipeline utilities")
+    parser = argparse.ArgumentParser(description="RWF-2000 Phase 1 and Phase 2 utilities")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     inspect_parser = subparsers.add_parser("inspect", help="inspect an existing dataset root")
@@ -32,6 +29,9 @@ def _parser() -> argparse.ArgumentParser:
     manifest_parser.add_argument("--test-split", default="test", help="official test directory name")
     manifest_parser.add_argument("--val-fraction", type=float, default=0.2)
     manifest_parser.add_argument("--seed", type=int, default=42)
+    from .phase2_cli import add_phase2_parsers
+
+    add_phase2_parsers(subparsers)
     return parser
 
 
@@ -39,6 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "inspect":
+            from .inspection import inspect_dataset
+
             report = inspect_dataset(
                 args.root,
                 splits=args.splits,
@@ -51,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(rendered, end="")
         elif args.command == "manifest":
+            from .manifest import build_manifest
+
             records = build_manifest(
                 args.root,
                 args.output,
@@ -61,7 +65,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"Wrote {len(records)} records to {args.output}")
             print(f"Wrote deterministic metadata to {args.output.with_suffix('.json')}")
-    except (FileNotFoundError, NotADirectoryError, OSError, TypeError, ValueError) as exc:
+        else:
+            from .phase2_cli import run_phase2
+
+            return run_phase2(args)
+    except (FileNotFoundError, NotADirectoryError, OSError, RuntimeError, TypeError, ValueError) as exc:
         _parser().error(str(exc))
     return 0
 

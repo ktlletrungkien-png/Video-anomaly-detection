@@ -339,16 +339,25 @@ Dự án được xem là đạt mục tiêu tối thiểu khi:
 
 ### 0.12. Việc cần làm ngay
 
-1. Ghi nhận yêu cầu đã rõ: dự án có thể dùng nhiều dataset, hai là mức tối thiểu.
-2. Tải và kiểm tra giấy phép, cấu trúc, split của RWF-2000.
-3. Chốt split theo tác giả hoặc tạo split cố định có lưu file manifest.
-4. Viết script thống kê video, FPS, độ phân giải, thời lượng và class balance.
-5. Viết clip sampler lấy 16 frame theo thứ tự.
-6. Xây baseline ResNet18 + temporal average.
-7. Kiểm tra model có overfit được một batch nhỏ.
-8. Chỉ sau đó thêm Temporal Transformer.
-9. Sau khi nhánh bạo lực có checkpoint ổn định, xây normal profile nhẹ cho Ped2 trước, rồi Avenue.
-10. Chỉ cân nhắc huấn luyện Transformer hoặc ConvLSTM anomaly sau khi toàn bộ pipeline lai, metric và demo cơ sở đã chạy.
+**Cập nhật ngày 06/10/2026:** Phase 1 RWF-2000 real-data verification đã hoàn thành trên Kaggle với 2.000 clip thật. Nền tảng local Phase 2 cho baseline `ResNet18 + temporal average pooling` cũng đã được implement và kiểm thử: model, epoch-aware augmentation, training/checkpoint loop, validation-only threshold selection, fixed-threshold test evaluation, provenance guard và CLI đều đã có; 68 tests local pass. Source `train` vẫn được chia thành derived train/validation bằng seed 42 và validation fraction 0,2; source `val` của bản Kaggle vẫn là derived held-out test. Chưa có training RWF-2000 thật, checkpoint thật hoặc model metric.
+
+Việc cần làm tiếp theo:
+
+1. Review các thay đổi local, chỉ stage đúng file của Phase 1/2, rồi commit và push; không đưa dataset, checkpoint hoặc credential vào Git.
+2. Trên Kaggle GPU, clone đúng commit và xác nhận cặp PyTorch/Torchvision có sẵn trước khi cài project.
+3. Chạy lại toàn bộ tests trên Kaggle.
+4. Dùng manifest Phase 1 đã khóa để chạy real batch forward trên derived train.
+5. Chạy one-batch overfit chỉ bằng derived train; nếu loss không giảm thì dừng, không chạy pilot/full training.
+6. Chạy config pilot một epoch để đo memory, throughput, DataLoader và artifact/checkpoint contract.
+7. Chỉ sau pilot pass mới chốt learning rate, batch size, workers và epoch count cho full baseline.
+8. Train full baseline trên derived train, chọn checkpoint và threshold chỉ bằng derived validation.
+9. Khóa config/checkpoint/threshold rồi mới chạy CLI `evaluate` một lần trên derived held-out test.
+10. Phân tích false positive/false negative và lưu toàn bộ artifact nhẹ; không ghi metric mục tiêu thành kết quả đo.
+11. Chỉ bắt đầu Temporal Transformer khi baseline và evaluation foundation ổn định.
+12. Sau khi nhánh bạo lực có checkpoint ổn định, xây normal profile nhẹ riêng cho Ped2 rồi Avenue.
+13. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.
+
+Kế hoạch chi tiết: `PHASE2_RWF2000_BASELINE_PLAN.md`.
 
 ---
 

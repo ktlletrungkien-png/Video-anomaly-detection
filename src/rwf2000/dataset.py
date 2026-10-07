@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 import random
 from typing import Any, Callable, Sequence
@@ -40,9 +41,38 @@ class RWF2000Dataset(Dataset[dict[str, Any]]):
         self.preprocess_config = preprocess_config or PreprocessConfig()
         self.training = (split == "train") if training is None else training
         self.seed = seed
+        self.base_seed = seed
+        self.epoch = 0
         self.num_frames = num_frames
         if self.num_frames <= 0:
             raise ValueError("num_frames must be positive")
+
+    def set_epoch(self, epoch: int) -> None:
+        """Set the deterministic augmentation epoch for training reads.
+
+        Evaluation reads intentionally ignore this value and remain invariant
+        across epochs. The method is useful with a normal single-process
+        DataLoader; callers using persistent workers must propagate the epoch
+        to each worker dataset instance explicitly.
+        """
+
+        if not isinstance(epoch, int) or isinstance(epoch, bool) or epoch < 0:
+            raise ValueError(f"epoch must be a non-negative integer, got {epoch!r}")
+        self.epoch = epoch
+
+    def _clip_rng(self, record: ManifestRecord) -> random.Random:
+        """Return a stable per-clip RNG without Python's process-randomized hash."""
+
+        try:
+            clip_component = int(record.clip_id[:16], 16)
+        except ValueError:
+            # Manifest clip IDs are SHA-256 hex strings, but this keeps the
+            # injected-record path deterministic for tests and callers using a
+            # different stable identifier format.
+            digest = hashlib.sha256(record.clip_id.encode("utf-8")).digest()
+            clip_component = int.from_bytes(digest[:8], "big")
+        epoch_component = self.epoch * 1_000_003 if self.training else 0
+        return random.Random(self.base_seed + clip_component + epoch_component)
 
     def __len__(self) -> int:
         return len(self.records)
@@ -91,7 +121,7 @@ class RWF2000Dataset(Dataset[dict[str, Any]]):
         frame_count = self._frame_count(path)
         indices = sample_uniform_indices(frame_count, self.num_frames)
         frames = self._decode(path, indices)
-        clip_rng = random.Random(self.seed + int(record.clip_id[:16], 16))
+        clip_rng = self._clip_rng(record)
         tensor = preprocess_frames(
             frames,
             self.preprocess_config,

@@ -1,0 +1,16 @@
+{
+  "batch_size": 4,
+  "checkpoint_rule": "min_validation_loss_earliest_tie",
+  "deterministic": true,
+  "epochs": 1,
+  "freeze_backbone": true,
+  "height": 224,
+  "learning_rate": 0.001,
+  "num_frames": 16,
+  "num_workers": 2,
+  "purpose": "kaggle_pilot_only_not_final",
+  "seed": 42,
+  "weight_decay": 0.0001,
+  "weights": "DEFAULT",
+  "width": 224
+}
