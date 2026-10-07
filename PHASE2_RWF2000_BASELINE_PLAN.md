@@ -1,26 +1,29 @@
 # Phase 2 — Kế hoạch ResNet18 + Temporal Average Pooling Baseline
 
-## 0. Trạng thái triển khai local — 06/10/2026
+## 0. Trạng thái hoàn tất — 07/10/2026
 
-Nền tảng local cho baseline đã hoàn thành và đã qua Gate A/B bằng dữ liệu tổng hợp, không dùng RWF-2000 thật:
+Phase 2 đã hoàn thành trên Kaggle. Gate A-G đều pass; không cần chạy lại training hoặc final test nếu không phát hiện lỗi thực sự.
 
-- Model `ResNet18 + temporal average pooling` nhận `[B,T,3,H,W]` và trả raw logits `[B]`.
-- Backbone pretrained có thể freeze; BatchNorm của backbone frozen luôn giữ ở evaluation mode.
-- Augmentation training thay đổi theo epoch nhưng vẫn deterministic theo seed/clip; validation/test không đổi theo epoch.
-- Training loop dùng `BCEWithLogitsLoss`, AdamW, validation loss và checkpoint tie-break giữ epoch sớm nhất.
-- Threshold chỉ được chọn trên derived validation theo F1, recall rồi threshold nhỏ nhất.
-- Final-test CLI chỉ nhận threshold validation đã lưu và từ chối checkpoint, threshold hoặc manifest khác run.
-- Train/validation/test guard kiểm tra cả `derived_split` và `source_split`, đồng thời fail-closed nếu loader không expose manifest records.
-- Run lưu config, preprocessing, versions, Git state, manifest/checkpoint/threshold hashes, predictions và metrics artifacts.
-- Final-test artifacts không bị ghi đè mặc định.
-- `68` unit/integration tests local pass; `pip check`, CLI help, compile smoke và ResNet18 CPU forward đều pass.
+Provenance chính:
 
-Hai config đã có mục đích tách biệt:
+- Git commit: `2af6ebdbb7b2617ce980b67fec20555b5d55220e`.
+- Manifest SHA-256: `a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2`.
+- Checkpoint SHA-256: `c1e16c3aa93d560978c225bc213f2a42ab51a16255caed801602d40f0c7c6078`.
+- Best epoch: 5; validation loss: `0.485344`.
+- Validation-selected threshold: `0.4555857181549072`.
+- Kaggle tests: 68 pass, 14 deprecation warnings.
 
-- `configs/rwf2000_resnet18_avg_local_smoke.json`: offline smoke, resolution 32, random frozen backbone; không dùng để báo cáo metric.
-- `configs/rwf2000_resnet18_avg_kaggle_pilot.json`: starting configuration một epoch cho Kaggle pilot; chưa phải final config hoặc hyperparameter tối ưu.
+Measured held-out test result:
 
-Phase 2 **chưa hoàn thành về mặt thực nghiệm**. Chưa có training trên RWF-2000 thật, checkpoint thật hoặc model metric. Các gate còn lại phải làm trên Kaggle theo thứ tự: real batch forward, one-batch overfit, pilot, khóa config, full training, chọn threshold bằng validation và cuối cùng mới evaluate held-out test.
+| Accuracy | Precision | Recall | F1 | ROC-AUC | Loss |
+|---:|---:|---:|---:|---:|---:|
+| 0.740000 | 0.712389 | 0.805000 | 0.755869 | 0.814525 | 0.526763 |
+
+Confusion matrix `[[TN,FP],[FN,TP]] = [[135,65],[39,161]]`.
+
+Các CSV/JSON artifacts đã được kiểm tra lại ở local: metric tính lại khớp, threshold/predicted labels nhất quán, validation/test không trùng clip ID và threshold hash khớp provenance. Kết quả nhẹ nằm tại `results/rwf-2000/phase2_resnet18_temporal_avg/`; checkpoint không được commit.
+
+Accuracy 74% thấp hơn planning target tối thiểu 75% một điểm phần trăm. Đây vẫn là baseline hợp lệ cho ablation, không phải lý do để retune bằng held-out test. Bước tiếp theo là Phase 3 Temporal Transformer theo `PHASE3_RWF2000_TEMPORAL_TRANSFORMER_PLAN.md`.
 
 ## 1. Mục tiêu
 
@@ -450,21 +453,21 @@ Sau khi implementation local được test, commit và push:
 
 Phase 2 chỉ hoàn thành khi:
 
-- [ ] Baseline architecture đúng contract.
-- [ ] Unit tests local và Kaggle pass.
-- [ ] Epoch-aware augmentation được kiểm chứng.
-- [ ] Real batch forward pass.
-- [ ] One-batch overfit sanity check pass.
-- [ ] Pilot run pass.
-- [ ] Full training hoàn thành trên derived train.
-- [ ] Best checkpoint được chọn bằng derived validation.
-- [ ] Threshold được chọn chỉ bằng derived validation.
-- [ ] Final derived-test evaluation chạy với configuration đã khóa.
-- [ ] Accuracy, Precision, Recall, F1, ROC-AUC và confusion matrix được lưu.
-- [ ] Git commit, config, seed và environment được ghi lại.
-- [ ] Failure cases được phân tích.
-- [ ] Không có split leakage hoặc test-label leakage; giới hạn duplicate/provenance vẫn được báo cáo riêng.
-- [ ] Không có metric giả hoặc metric tham khảo bị ghi như kết quả project.
+- [x] Baseline architecture đúng contract.
+- [x] Unit tests local và Kaggle pass.
+- [x] Epoch-aware augmentation được kiểm chứng.
+- [x] Real batch forward pass.
+- [x] One-batch overfit sanity check pass.
+- [x] Pilot run pass.
+- [x] Full training hoàn thành trên derived train.
+- [x] Best checkpoint được chọn bằng derived validation.
+- [x] Threshold được chọn chỉ bằng derived validation.
+- [x] Final derived-test evaluation chạy với configuration đã khóa.
+- [x] Accuracy, Precision, Recall, F1, ROC-AUC và confusion matrix được lưu.
+- [x] Git commit, config, seed và environment được ghi lại.
+- [x] Failure cases được định danh: 65 false positives, 39 false negatives; qualitative video review là follow-up cho báo cáo.
+- [x] Không có split leakage hoặc test-label leakage đã quan sát; giới hạn duplicate/provenance được báo cáo riêng.
+- [x] Không có metric giả hoặc metric tham khảo bị ghi như kết quả project.
 
 Chỉ sau Definition of Done này mới bắt đầu Phase 3 Temporal Transformer.
 
@@ -485,19 +488,9 @@ Chỉ sau Definition of Done này mới bắt đầu Phase 3 Temporal Transforme
 
 ## 11. Thứ tự công việc ngay tiếp theo
 
-Thứ tự đề xuất cho iteration kế tiếp:
-
-1. Implement model-only baseline và tests.
-2. Implement epoch-aware augmentation và tests.
-3. Chạy toàn bộ local tests.
-4. Thêm training config/CLI tối thiểu.
-5. Thêm one-step training/checkpoint tests.
-6. Thêm metrics và threshold-selection tests.
-7. Review toàn bộ diff.
-8. Người dùng commit/push.
-9. Kaggle real batch forward.
-10. Kaggle one-batch overfit.
-11. Kaggle pilot run.
-12. Chỉ sau pilot mới chốt full-training config.
-
-Không bắt đầu training full dataset trong iteration implementation local.
+1. Commit các artifact nhẹ và tài liệu Phase 2; không commit checkpoint.
+2. Không chạy lại baseline test hoặc retune threshold từ test result.
+3. Implement Temporal Transformer ở local với controlled ablation giữ nguyên manifest, preprocessing và evaluation protocol.
+4. Chạy local tests rồi Kaggle smoke/overfit/pilot trước full Transformer training.
+5. Chỉ evaluate Transformer test sau khi config/checkpoint/threshold của Transformer đã khóa bằng validation.
+6. Sau khi nhánh violence chính ổn định, tiếp tục normal-profile nhẹ riêng cho Ped2 và Avenue.

@@ -1,0 +1,45 @@
+{
+  "accuracy": 0.74,
+  "best_epoch": 5,
+  "best_val_loss": 0.4853441030252725,
+  "checkpoint_sha256": "c1e16c3aa93d560978c225bc213f2a42ab51a16255caed801602d40f0c7c6078",
+  "class_counts": {
+    "Non-violence": 200,
+    "Violence": 200
+  },
+  "class_support": {
+    "Non-violence": 200,
+    "Violence": 200
+  },
+  "confusion_matrix": [
+    [
+      135,
+      65
+    ],
+    [
+      39,
+      161
+    ]
+  ],
+  "evaluation_loss": 0.5267629267275333,
+  "evaluation_split": "derived_test",
+  "f1": 0.755868544600939,
+  "manifest_sha256": "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2",
+  "precision": 0.7123893805309734,
+  "recall": 0.805,
+  "roc_auc": 0.814525,
+  "run_context": {
+    "checkpoint_path": "/kaggle/working/rwf2000_phase2_full/best_checkpoint.pth",
+    "dataset_root": "/kaggle/input/datasets/daniazehra/rwf-2000/RWF-2000",
+    "manifest_path": "/kaggle/working/rwf2000_phase1/rwf2000_manifest.csv",
+    "source_split_semantics": {
+      "derived_test": "source val held out"
+    },
+    "threshold_path": "/kaggle/working/rwf2000_phase2_full/selected_threshold.json"
+  },
+  "run_id": "c1e16c3aa93d560978c225bc213f2a42ab51a16255caed801602d40f0c7c6078",
+  "support": 400,
+  "threshold": 0.4555857181549072,
+  "threshold_sha256": "81fa9d82ffd4abbaa1d6bf5301f7a9b56bdc0e1091e35c31aaa0a9e3af17cda2",
+  "threshold_source": "validation"
+}

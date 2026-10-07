@@ -118,6 +118,7 @@ def test_train_config_is_frozen_and_json_round_trips(tmp_path):
     [
         ("rwf2000_resnet18_avg_local_smoke.json", "local_smoke_only"),
         ("rwf2000_resnet18_avg_kaggle_pilot.json", "kaggle_pilot_only_not_final"),
+        ("rwf2000_resnet18_avg_kaggle_full.json", "kaggle_full_baseline"),
     ],
 )
 def test_committed_training_configs_are_valid(config_name, purpose):

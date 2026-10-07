@@ -1,0 +1,27 @@
+{
+  "cuda_available": true,
+  "cuda_device_name": "Tesla T4",
+  "cuda_version": "12.8",
+  "deterministic": true,
+  "device": "cuda",
+  "freeze_backbone": true,
+  "git_commit": "2af6ebdbb7b2617ce980b67fec20555b5d55220e",
+  "git_dirty": false,
+  "numpy_version": "2.1.3",
+  "opencv_version": "4.14.0.94",
+  "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+  "python_implementation": "CPython",
+  "python_version": "3.13.15",
+  "scikit_learn_version": "1.6.1",
+  "seed_policy": {
+    "cuda_available_at_seed_time": true,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "deterministic": true,
+    "seed": 42,
+    "torch_deterministic_algorithms": true
+  },
+  "torch_version": "2.11.0+cu128",
+  "torchvision_version": "0.26.0+cu128",
+  "weights": "DEFAULT"
+}

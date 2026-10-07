@@ -3,7 +3,7 @@
 ## Hệ thống giám sát phát hiện bạo lực và bất thường trong video CCTV
 
 > Tài liệu tổng hợp bối cảnh, mục tiêu, quyết định kỹ thuật, đánh giá kế hoạch và trạng thái thực tế của dự án.  
-> Cập nhật gần nhất: 12/09/2026.  
+> Cập nhật gần nhất: 07/10/2026.
 > Nội dung và sản phẩm presentation được chủ động loại khỏi tài liệu này.
 
 ---
@@ -339,25 +339,24 @@ Dự án được xem là đạt mục tiêu tối thiểu khi:
 
 ### 0.12. Việc cần làm ngay
 
-**Cập nhật ngày 06/10/2026:** Phase 1 RWF-2000 real-data verification đã hoàn thành trên Kaggle với 2.000 clip thật. Nền tảng local Phase 2 cho baseline `ResNet18 + temporal average pooling` cũng đã được implement và kiểm thử: model, epoch-aware augmentation, training/checkpoint loop, validation-only threshold selection, fixed-threshold test evaluation, provenance guard và CLI đều đã có; 68 tests local pass. Source `train` vẫn được chia thành derived train/validation bằng seed 42 và validation fraction 0,2; source `val` của bản Kaggle vẫn là derived held-out test. Chưa có training RWF-2000 thật, checkpoint thật hoặc model metric.
+**Cập nhật ngày 07/10/2026:** Phase 2 RWF-2000 baseline đã hoàn thành trên Kaggle; Gate A-G đều pass. Model là pretrained frozen ResNet18 + temporal average pooling, train 5 epochs trên 1.280 derived-train clips, chọn checkpoint/threshold bằng 320 derived-validation clips và chỉ sau khi khóa mới evaluate 400 derived-test clips. Held-out result đo được: Accuracy `0.74`, Precision `0.712389`, Recall `0.805`, F1 `0.755869`, ROC-AUC `0.814525`; confusion matrix `[[135,65],[39,161]]`. Threshold validation là `0.4555857181549072`. Đây là kết quả project đã đo, không phải target; accuracy thấp hơn planning target tối thiểu 75% một điểm phần trăm. Không được retune bằng test set hoặc chạy lại test để chọn kết quả đẹp hơn.
 
 Việc cần làm tiếp theo:
 
-1. Review các thay đổi local, chỉ stage đúng file của Phase 1/2, rồi commit và push; không đưa dataset, checkpoint hoặc credential vào Git.
-2. Trên Kaggle GPU, clone đúng commit và xác nhận cặp PyTorch/Torchvision có sẵn trước khi cài project.
-3. Chạy lại toàn bộ tests trên Kaggle.
-4. Dùng manifest Phase 1 đã khóa để chạy real batch forward trên derived train.
-5. Chạy one-batch overfit chỉ bằng derived train; nếu loss không giảm thì dừng, không chạy pilot/full training.
-6. Chạy config pilot một epoch để đo memory, throughput, DataLoader và artifact/checkpoint contract.
-7. Chỉ sau pilot pass mới chốt learning rate, batch size, workers và epoch count cho full baseline.
-8. Train full baseline trên derived train, chọn checkpoint và threshold chỉ bằng derived validation.
-9. Khóa config/checkpoint/threshold rồi mới chạy CLI `evaluate` một lần trên derived held-out test.
-10. Phân tích false positive/false negative và lưu toàn bộ artifact nhẹ; không ghi metric mục tiêu thành kết quả đo.
-11. Chỉ bắt đầu Temporal Transformer khi baseline và evaluation foundation ổn định.
-12. Sau khi nhánh bạo lực có checkpoint ổn định, xây normal profile nhẹ riêng cho Ped2 rồi Avenue.
-13. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.
+1. Commit artifact nhẹ và báo cáo Phase 2; checkpoint được backup riêng ngoài Git, nhận dạng bằng SHA-256 `c1e16c3aa93d560978c225bc213f2a42ab51a16255caed801602d40f0c7c6078`.
+2. Implement Phase 3 `ResNet18 + Temporal Transformer` ở local, giữ nguyên manifest, 16 frames, resolution, preprocessing, loss và evaluation protocol để tạo ablation công bằng.
+3. Transformer chỉ dùng derived train/validation để chọn model và threshold; không dùng baseline test errors hoặc Transformer test labels để tune.
+4. Chạy local tests, real-batch forward, one-batch overfit và pilot trước full Transformer training.
+5. Evaluate Transformer held-out test đúng một lần sau khi config/checkpoint/threshold đã khóa.
+6. So sánh baseline và Transformer bằng Accuracy, Precision, Recall, F1, ROC-AUC, confusion matrix và failure cases.
+7. Sau khi nhánh violence chính ổn định, xây normal profile nhẹ riêng cho Ped2 rồi Avenue.
+8. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.
 
-Kế hoạch chi tiết: `PHASE2_RWF2000_BASELINE_PLAN.md`.
+Tài liệu chi tiết:
+
+- `PHASE2_RWF2000_BASELINE_PLAN.md`.
+- `results/rwf-2000/phase2_resnet18_temporal_avg/README.md`.
+- `PHASE3_RWF2000_TEMPORAL_TRANSFORMER_PLAN.md`.
 
 ---
 
