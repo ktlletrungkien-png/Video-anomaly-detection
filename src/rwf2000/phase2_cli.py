@@ -61,7 +61,7 @@ def run_train(args: argparse.Namespace) -> dict[str, Any]:
 
     from .dataset import RWF2000Dataset, make_dataloader
     from .evaluate_baseline import finalize_validation
-    from .models import build_resnet18_temporal_average
+    from .models import build_model_from_config
     from .preprocessing import PreprocessConfig
     from .train_baseline import fit, set_global_seed, sha256_file
     from .train_config import TrainConfig
@@ -72,12 +72,16 @@ def run_train(args: argparse.Namespace) -> dict[str, Any]:
     manifest = args.manifest.resolve()
     output = args.output.resolve()
     manifest_hash = sha256_file(manifest)
+    if (
+        config.expected_manifest_sha256 is not None
+        and manifest_hash != config.expected_manifest_sha256
+    ):
+        raise ValueError(
+            "runtime manifest_sha256 does not match config expected_manifest_sha256"
+        )
     # Initialization must be seeded before constructing the model.
     set_global_seed(config.seed, deterministic=config.deterministic)
-    model = build_resnet18_temporal_average(
-        weights=config.weights,
-        freeze_backbone=config.freeze_backbone,
-    )
+    model = build_model_from_config(config)
     preprocess = PreprocessConfig(height=config.height, width=config.width)
     train_dataset = RWF2000Dataset(
         root,
@@ -114,7 +118,8 @@ def run_train(args: argparse.Namespace) -> dict[str, Any]:
     context = {
         "dataset_root": str(root),
         "manifest_path": str(manifest),
-        "architecture": "ResNet18TemporalAverage",
+        "architecture": config.architecture,
+        "architecture_version": config.architecture_version,
         "feature_dim": int(getattr(model, "feature_dim", 512)),
         "loss": "BCEWithLogitsLoss",
         "optimizer": {
@@ -213,7 +218,7 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
 
     from .dataset import RWF2000Dataset, make_dataloader
     from .evaluate_baseline import evaluate_test_fixed_threshold
-    from .models import build_resnet18_temporal_average
+    from .models import build_model_from_config
     from .train_baseline import sha256_file
 
     device = resolve_device(args.device)
@@ -224,11 +229,15 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
     output = args.output.resolve()
     manifest_sha256 = sha256_file(manifest)
     run_config = _load_checkpoint_run_config(checkpoint)
+    expected_manifest = run_config.get("expected_manifest_sha256")
+    if expected_manifest is not None and manifest_sha256 != expected_manifest:
+        raise ValueError(
+            "runtime manifest_sha256 does not match checkpoint expected_manifest_sha256"
+        )
     num_frames = int(run_config.get("num_frames", 16))
     preprocess = _preprocess_from_run_config(run_config)
     batch_size = int(run_config.get("batch_size", 4))
     num_workers = int(run_config.get("num_workers", 0))
-    freeze_backbone = bool(run_config.get("freeze_backbone", True))
     test_dataset = RWF2000Dataset(
         root,
         manifest,
@@ -247,7 +256,10 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
     )
     # Never request pretrained weights during evaluation; checkpoint loading
     # supplies the trained state and avoids any network dependency.
-    model = build_resnet18_temporal_average(weights=None, freeze_backbone=freeze_backbone)
+    # Reconstruct the exact architecture recorded by the checkpoint.  The
+    # explicit weights override is None so evaluation never downloads a
+    # pretrained model; the checkpoint supplies all learned parameters.
+    model = build_model_from_config(run_config, weights=None)
     result = evaluate_test_fixed_threshold(
         model,
         checkpoint,

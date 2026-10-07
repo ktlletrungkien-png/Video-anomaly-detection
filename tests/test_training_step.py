@@ -69,6 +69,7 @@ def _config(**overrides):
     values = {
         "epochs": 1,
         "batch_size": 2,
+        "feature_dim": 2,
         "weights": None,
         "purpose": "local_smoke_only",
     }
@@ -119,6 +120,15 @@ def test_train_config_is_frozen_and_json_round_trips(tmp_path):
         ("rwf2000_resnet18_avg_local_smoke.json", "local_smoke_only"),
         ("rwf2000_resnet18_avg_kaggle_pilot.json", "kaggle_pilot_only_not_final"),
         ("rwf2000_resnet18_avg_kaggle_full.json", "kaggle_full_baseline"),
+        ("rwf2000_resnet18_transformer_local_smoke.json", "local_smoke_only"),
+        (
+            "rwf2000_resnet18_transformer_kaggle_pilot.json",
+            "phase3_kaggle_pilot_only_not_final",
+        ),
+        (
+            "rwf2000_resnet18_transformer_kaggle_full.json",
+            "phase3_kaggle_full_transformer",
+        ),
     ],
 )
 def test_committed_training_configs_are_valid(config_name, purpose):
@@ -127,6 +137,21 @@ def test_committed_training_configs_are_valid(config_name, purpose):
     config = TrainConfig.load_json(config_path)
 
     assert config.purpose == purpose
+    if "transformer" in config_name:
+        assert config.architecture == "ResNet18TemporalTransformer"
+        assert config.architecture_version == "v1"
+        assert config.feature_dim == 512
+        assert config.num_frames == 16
+        assert config.num_layers == 2
+        assert config.nhead == 4
+        assert config.dim_feedforward == 1024
+        assert config.dropout == 0.1
+        assert config.positional_encoding_type == "sinusoidal"
+        assert config.max_sequence_length == 16
+        assert config.norm_first is True
+        assert config.activation == "gelu"
+        assert config.temporal_pooling == "mean"
+        assert config.expected_manifest_sha256 is not None
 
 
 def test_set_global_seed_reproduces_torch_and_numpy_streams():

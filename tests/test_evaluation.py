@@ -96,6 +96,9 @@ def test_finalize_validation_writes_predictions_metrics_and_threshold(tmp_path):
     assert threshold["manifest_sha256"] == "hash"
     assert threshold["checkpoint_sha256"] == threshold["run_id"]
     assert threshold["best_epoch"] == 1
+    assert threshold["architecture"] == "ResNet18TemporalAverage"
+    assert threshold["architecture_contract"]["feature_dim"] == 2
+    assert threshold["validation_predictions_sha256"]
     prediction_text = Path(result["predictions"]).read_text(encoding="utf-8")
     assert "clip_id,relative_path,label,logit,probability,threshold,predicted_label" in prediction_text
     assert "clip-0" in prediction_text
@@ -303,5 +306,46 @@ def test_threshold_artifact_rejects_tampered_selected_evidence(tmp_path):
             tampered,
             Loader([_batch([0.0, 1.0])], "test"),
             tmp_path / "tampered-output",
+            manifest_sha256="hash",
+        )
+
+
+def test_threshold_artifact_links_architecture_and_validation_predictions(tmp_path):
+    model = _model()
+    checkpoint = _checkpoint(tmp_path, model)
+    validation = finalize_validation(
+        model,
+        checkpoint,
+        Loader([_batch([0.0, 1.0])], "val"),
+        tmp_path,
+        manifest_sha256="hash",
+    )
+    payload = json.loads(Path(validation["threshold"]).read_text(encoding="utf-8"))
+    payload["architecture"] = "ResNet18TemporalTransformer"
+    tampered_architecture = tmp_path / "tampered_architecture.json"
+    tampered_architecture.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="architecture does not match"):
+        evaluate_test_fixed_threshold(
+            model,
+            checkpoint,
+            tampered_architecture,
+            Loader([_batch([0.0, 1.0])], "test"),
+            tmp_path / "tampered-architecture-output",
+            manifest_sha256="hash",
+        )
+
+    original_threshold = validation["threshold"]
+    predictions = tmp_path / "validation_predictions.csv"
+    predictions.write_text(
+        predictions.read_text(encoding="utf-8") + "tampered\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="validation_predictions_sha256 does not match"):
+        evaluate_test_fixed_threshold(
+            model,
+            checkpoint,
+            original_threshold,
+            Loader([_batch([0.0, 1.0])], "test"),
+            tmp_path / "tampered-predictions-output",
             manifest_sha256="hash",
         )

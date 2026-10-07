@@ -22,6 +22,7 @@ import torch
 from torch import Tensor, nn
 from torch.optim import AdamW, Optimizer
 
+from .models import model_architecture_contract, validate_model_architecture_contract
 from .train_config import TrainConfig
 
 
@@ -410,6 +411,22 @@ def _config_for_run(config: TrainConfig, *, device: torch.device | str, manifest
     return values
 
 
+def _merge_run_context(run_config: dict[str, Any], run_context: Mapping[str, Any]) -> None:
+    """Merge runtime context without allowing core provenance to be replaced."""
+
+    context = _json_safe(run_context, field="run_context")
+    for key, value in context.items():
+        if key in run_config:
+            if run_config[key] != value:
+                raise ValueError(
+                    f"run_context conflicts with core run_config field {key!r}"
+                )
+            # Identical duplicates are intentionally harmless and avoid
+            # changing the canonical config field's type or ownership.
+            continue
+        run_config[key] = value
+
+
 def save_checkpoint(
     path: str | Path,
     *,
@@ -427,6 +444,7 @@ def save_checkpoint(
     output.parent.mkdir(parents=True, exist_ok=True)
     safe_run_config = _json_safe(run_config, field="run_config")
     safe_environment = _json_safe(environment, field="environment")
+    architecture_contract = validate_model_architecture_contract(model, safe_run_config)
     payload = {
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
@@ -436,6 +454,7 @@ def save_checkpoint(
         "selection_mode": "min",
         "checkpoint_rule": "min_validation_loss_earliest_tie",
         "run_config": safe_run_config,
+        "model_architecture_contract": architecture_contract,
         "manifest_sha256": manifest_sha256,
         "environment": safe_environment,
         "rng_state": capture_rng_state(),
@@ -460,6 +479,18 @@ def load_checkpoint(
         payload = torch.load(Path(path), map_location=map_location)
     if not isinstance(payload, Mapping):
         raise ValueError("checkpoint must contain a mapping")
+    architecture_contract = model_architecture_contract(model)
+    if architecture_contract is not None:
+        run_config = payload.get("run_config")
+        if not isinstance(run_config, Mapping):
+            raise ValueError("checkpoint must contain a run_config mapping")
+        validate_model_architecture_contract(model, run_config)
+        saved_contract = payload.get("model_architecture_contract")
+        if saved_contract is None:
+            if architecture_contract["architecture"] == "ResNet18TemporalTransformer":
+                raise ValueError("Transformer checkpoint is missing model_architecture_contract")
+        elif not isinstance(saved_contract, Mapping) or dict(saved_contract) != architecture_contract:
+            raise ValueError("checkpoint model_architecture_contract does not match model")
     model.load_state_dict(payload["model_state_dict"], strict=True)
     if optimizer is not None:
         optimizer.load_state_dict(payload["optimizer_state_dict"])
@@ -491,6 +522,12 @@ def fit(
 
     if not isinstance(config, TrainConfig):
         raise TypeError("config must be a TrainConfig")
+    validate_model_architecture_contract(model, config)
+    if config.expected_manifest_sha256 is not None:
+        if manifest_sha256 != config.expected_manifest_sha256:
+            raise ValueError(
+                "runtime manifest_sha256 does not match config expected_manifest_sha256"
+            )
     _validate_loader_split(train_loader, "train", "train", expected_source="train")
     _validate_loader_split(val_loader, "val", "validation", expected_source="train")
     target_device = torch.device(device)
@@ -501,7 +538,7 @@ def fit(
     output.mkdir(parents=True, exist_ok=True)
     run_config = _config_for_run(config, device=target_device, manifest_sha256=manifest_sha256)
     if run_context is not None:
-        run_config.update(_json_safe(run_context, field="run_context"))
+        _merge_run_context(run_config, run_context)
     # Keep the architecture contract in every checkpoint, including callers
     # that use ``fit`` directly instead of the Phase 2 CLI.  The CLI supplies
     # the canonical values explicitly; these fallbacks make synthetic/local

@@ -12,7 +12,14 @@ from typing import Any, Mapping
 import torch
 
 from .metrics import compute_binary_metrics, select_threshold
+from .models import architecture_contract_from_config
 from .train_baseline import _validate_loader_split, evaluate_loader, load_checkpoint, sha256_file
+
+
+SUPPORTED_ARCHITECTURES = {
+    "ResNet18TemporalAverage",
+    "ResNet18TemporalTransformer",
+}
 
 
 PREDICTION_FIELDS = (
@@ -202,8 +209,12 @@ def _checkpoint_provenance(checkpoint_path: str | Path, payload: Mapping[str, An
         or not math.isfinite(float(best_val_loss))
     ):
         raise ValueError("checkpoint is missing a finite best_val_loss")
-    if run_config.get("architecture") != "ResNet18TemporalAverage":
-        raise ValueError("checkpoint architecture must be ResNet18TemporalAverage")
+    architecture = run_config.get("architecture")
+    if architecture not in SUPPORTED_ARCHITECTURES:
+        raise ValueError(
+            "checkpoint architecture must be one of "
+            f"{sorted(SUPPORTED_ARCHITECTURES)!r}"
+        )
     feature_dim = run_config.get("feature_dim")
     if (
         isinstance(feature_dim, bool)
@@ -216,6 +227,43 @@ def _checkpoint_provenance(checkpoint_path: str | Path, payload: Mapping[str, An
         raise ValueError("checkpoint run_config is missing a non-empty manifest_sha256")
     if run_manifest != manifest_sha256:
         raise ValueError("checkpoint manifest_sha256 disagrees with run_config")
+    expected_manifest = run_config.get("expected_manifest_sha256")
+    if expected_manifest is not None and expected_manifest != manifest_sha256:
+        raise ValueError("checkpoint expected_manifest_sha256 disagrees with manifest_sha256")
+    if architecture == "ResNet18TemporalTransformer":
+        required = (
+            "architecture_version",
+            "num_layers",
+            "nhead",
+            "dim_feedforward",
+            "dropout",
+            "positional_encoding_type",
+            "max_sequence_length",
+            "norm_first",
+            "activation",
+            "temporal_pooling",
+        )
+        missing = [field for field in required if field not in run_config]
+        if missing:
+            raise ValueError(
+                "Transformer checkpoint run_config is missing fields: "
+                + ", ".join(missing)
+            )
+        if run_config["architecture_version"] != "v1":
+            raise ValueError("Transformer checkpoint architecture_version must be 'v1'")
+        if run_config["positional_encoding_type"] != "sinusoidal":
+            raise ValueError("Transformer checkpoint positional encoding must be sinusoidal")
+        if run_config["temporal_pooling"] != "mean":
+            raise ValueError("Transformer checkpoint temporal_pooling must be mean")
+    architecture_contract = architecture_contract_from_config(run_config)
+    saved_contract = payload.get("model_architecture_contract")
+    if architecture == "ResNet18TemporalTransformer" and not isinstance(saved_contract, Mapping):
+        raise ValueError("Transformer checkpoint is missing model_architecture_contract")
+    if saved_contract is not None and (
+        not isinstance(saved_contract, Mapping)
+        or dict(saved_contract) != architecture_contract
+    ):
+        raise ValueError("checkpoint model_architecture_contract disagrees with run_config")
     epoch = payload.get("epoch")
     if not isinstance(epoch, int) or isinstance(epoch, bool):
         raise ValueError("checkpoint is missing a valid best epoch")
@@ -224,6 +272,8 @@ def _checkpoint_provenance(checkpoint_path: str | Path, payload: Mapping[str, An
         "checkpoint_sha256": checkpoint_sha256,
         "best_epoch": epoch,
         "best_val_loss": float(best_val_loss),
+        "architecture": architecture,
+        "architecture_contract": architecture_contract,
         "run_id": checkpoint_sha256,
     }
 
@@ -255,6 +305,7 @@ def finalize_validation(
     )
     output = Path(output_dir)
     predictions_path = _write_predictions(output / "validation_predictions.csv", result, selection["threshold"])
+    validation_predictions_sha256 = sha256_file(predictions_path)
     metrics_payload = dict(metrics)
     metrics_payload.update(
         {
@@ -262,6 +313,7 @@ def finalize_validation(
             "selection_split": "validation",
             "evaluation_loss": float(result["loss"]),
             **provenance,
+            "validation_predictions_sha256": validation_predictions_sha256,
             "class_counts": _class_counts(result["labels"]),
         }
     )
@@ -270,6 +322,7 @@ def finalize_validation(
         {
             "schema": THRESHOLD_ARTIFACT_SCHEMA,
             **provenance,
+            "validation_predictions_sha256": validation_predictions_sha256,
             "threshold_rule": THRESHOLD_RULE,
         }
     )
@@ -319,6 +372,40 @@ def evaluate_test_fixed_threshold(
     for field in ("manifest_sha256", "checkpoint_sha256", "best_epoch", "run_id"):
         if threshold_artifact.get(field) != provenance[field]:
             raise ValueError(f"threshold artifact {field} does not match checkpoint provenance")
+    for field in ("architecture", "architecture_contract"):
+        if (
+            field in threshold_artifact
+            or provenance["architecture"] == "ResNet18TemporalTransformer"
+        ) and threshold_artifact.get(field) != provenance[field]:
+            raise ValueError(f"threshold artifact {field} does not match checkpoint provenance")
+    validation_predictions_sha256 = threshold_artifact.get("validation_predictions_sha256")
+    if (
+        validation_predictions_sha256 is not None
+        or provenance["architecture"] == "ResNet18TemporalTransformer"
+    ):
+        if (
+            not isinstance(validation_predictions_sha256, str)
+            or len(validation_predictions_sha256) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in validation_predictions_sha256.lower()
+            )
+        ):
+            raise ValueError(
+                "threshold artifact is missing a valid validation_predictions_sha256"
+            )
+        validation_predictions_path = Path(threshold_path).with_name(
+            "validation_predictions.csv"
+        )
+        if not validation_predictions_path.is_file():
+            raise ValueError(
+                "validation_predictions.csv is required beside the threshold artifact"
+            )
+        if sha256_file(validation_predictions_path) != validation_predictions_sha256:
+            raise ValueError(
+                "threshold artifact validation_predictions_sha256 does not match "
+                "validation_predictions.csv"
+            )
     result = evaluate_loader(model, test_loader, device=device)
     metrics = compute_binary_metrics(result["labels"], result["probabilities"], threshold)
     predictions_path = _write_predictions(output / "test_predictions.csv", result, threshold)

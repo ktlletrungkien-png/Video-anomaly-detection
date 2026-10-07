@@ -9,6 +9,13 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
+SUPPORTED_ARCHITECTURES = (
+    "ResNet18TemporalAverage",
+    "ResNet18TemporalTransformer",
+)
+EXPECTED_RWF2000_MANIFEST_SHA256 = "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2"
+
+
 @dataclass(frozen=True)
 class TrainConfig:
     """Configuration shared by the baseline training and checkpoint code.
@@ -32,6 +39,19 @@ class TrainConfig:
     deterministic: bool = True
     checkpoint_rule: str = "min_validation_loss_earliest_tie"
     purpose: str = "local_smoke_only"
+    architecture: str = "ResNet18TemporalAverage"
+    architecture_version: str = "v1"
+    feature_dim: int = 512
+    num_layers: int = 2
+    nhead: int = 4
+    dim_feedforward: int = 1024
+    dropout: float = 0.1
+    positional_encoding_type: str = "sinusoidal"
+    max_sequence_length: int = 16
+    norm_first: bool = True
+    activation: str = "gelu"
+    temporal_pooling: str = "mean"
+    expected_manifest_sha256: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -74,6 +94,44 @@ class TrainConfig:
             )
         if not isinstance(self.purpose, str) or not self.purpose:
             raise ValueError("purpose must be a non-empty string")
+        if self.architecture not in SUPPORTED_ARCHITECTURES:
+            raise ValueError(
+                f"architecture must be one of {SUPPORTED_ARCHITECTURES!r}, got {self.architecture!r}"
+            )
+        if self.architecture_version != "v1":
+            raise ValueError("architecture_version must be 'v1'")
+        for name in ("feature_dim", "num_layers", "nhead", "dim_feedforward", "max_sequence_length"):
+            value = getattr(self, name)
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+        if self.architecture == "ResNet18TemporalTransformer" and self.feature_dim % self.nhead != 0:
+            raise ValueError("feature_dim must be divisible by nhead")
+        if (
+            self.architecture == "ResNet18TemporalTransformer"
+            and self.max_sequence_length < self.num_frames
+        ):
+            raise ValueError(
+                "max_sequence_length must be greater than or equal to num_frames"
+            )
+        if isinstance(self.dropout, bool) or not isinstance(self.dropout, (int, float)):
+            raise ValueError("dropout must be a finite number in [0, 1)")
+        if not math.isfinite(float(self.dropout)) or not 0.0 <= float(self.dropout) < 1.0:
+            raise ValueError("dropout must be a finite number in [0, 1)")
+        if self.positional_encoding_type != "sinusoidal":
+            raise ValueError("positional_encoding_type must be 'sinusoidal'")
+        if not isinstance(self.norm_first, bool):
+            raise ValueError("norm_first must be a boolean")
+        if self.activation not in ("gelu", "relu"):
+            raise ValueError("activation must be 'gelu' or 'relu'")
+        if self.temporal_pooling != "mean":
+            raise ValueError("temporal_pooling must be 'mean'")
+        if self.expected_manifest_sha256 is not None:
+            if (
+                not isinstance(self.expected_manifest_sha256, str)
+                or len(self.expected_manifest_sha256) != 64
+                or any(character not in "0123456789abcdef" for character in self.expected_manifest_sha256.lower())
+            ):
+                raise ValueError("expected_manifest_sha256 must be a 64-character hexadecimal hash")
 
     @property
     def lr(self) -> float:

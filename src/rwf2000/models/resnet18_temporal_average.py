@@ -43,6 +43,9 @@ class ResNet18TemporalAverage(nn.Module):
     Sigmoid is intentionally left to the metric/inference layer.
     """
 
+    architecture = "ResNet18TemporalAverage"
+    architecture_version = "v1"
+
     def __init__(
         self,
         *,
