@@ -341,13 +341,15 @@ Dự án được xem là đạt mục tiêu tối thiểu khi:
 
 **Cập nhật ngày 07/10/2026:** Phase 2 RWF-2000 baseline đã hoàn thành trên Kaggle; Gate A-G đều pass. Model là pretrained frozen ResNet18 + temporal average pooling, train 5 epochs trên 1.280 derived-train clips, chọn checkpoint/threshold bằng 320 derived-validation clips và chỉ sau khi khóa mới evaluate 400 derived-test clips. Held-out result đo được: Accuracy `0.74`, Precision `0.712389`, Recall `0.805`, F1 `0.755869`, ROC-AUC `0.814525`; confusion matrix `[[135,65],[39,161]]`. Threshold validation là `0.4555857181549072`. Đây là kết quả project đã đo, không phải target; accuracy thấp hơn planning target tối thiểu 75% một điểm phần trăm. Không được retune bằng test set hoặc chạy lại test để chọn kết quả đẹp hơn.
 
+Implementation local cho Phase 3 `ResNet18 + Temporal Transformer` cũng đã hoàn thành và được kiểm tra không cần dataset thật. Kiến trúc khởi đầu dùng sinusoidal positional encoding, 2 Transformer layers, 4 attention heads, FFN 1024, dropout 0.1, pre-norm và mean pooling; frozen ResNet18/BatchNorm giữ eval mode. Full local suite đạt `81 passed`, `7 warnings`; CPU synthetic smoke xác nhận logits hữu hạn, backbone không nhận gradient, Transformer và classifier cập nhật sau một optimization step. Chưa chạy Kaggle gates, chưa train Transformer trên RWF-2000 và chưa có metric Phase 3.
+
 Việc cần làm tiếp theo:
 
-1. Commit artifact nhẹ và báo cáo Phase 2; checkpoint được backup riêng ngoài Git, nhận dạng bằng SHA-256 `c1e16c3aa93d560978c225bc213f2a42ab51a16255caed801602d40f0c7c6078`.
-2. Implement Phase 3 `ResNet18 + Temporal Transformer` ở local, giữ nguyên manifest, 16 frames, resolution, preprocessing, loss và evaluation protocol để tạo ablation công bằng.
-3. Transformer chỉ dùng derived train/validation để chọn model và threshold; không dùng baseline test errors hoặc Transformer test labels để tune.
-4. Chạy local tests, real-batch forward, one-batch overfit và pilot trước full Transformer training.
-5. Evaluate Transformer held-out test đúng một lần sau khi config/checkpoint/threshold đã khóa.
+1. Push commit implementation Phase 3 lên remote để Kaggle checkout đúng code đã kiểm tra.
+2. Trên Kaggle, chạy Gate A tests/environment, Gate B real-batch forward, Gate C one-batch overfit và Gate D pilot 1 epoch; chưa mở derived test.
+3. Chỉ khóa full-training config bằng evidence từ derived train/validation; không dùng baseline test errors hoặc Transformer test labels để tune.
+4. Chạy Gate E full Transformer training, chọn best checkpoint và threshold chỉ bằng derived validation.
+5. Evaluate Transformer held-out test đúng một lần ở Gate F sau khi config/checkpoint/threshold đã khóa.
 6. So sánh baseline và Transformer bằng Accuracy, Precision, Recall, F1, ROC-AUC, confusion matrix và failure cases.
 7. Sau khi nhánh violence chính ổn định, xây normal profile nhẹ riêng cho Ped2 rồi Avenue.
 8. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.

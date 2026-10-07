@@ -1,5 +1,19 @@
 # Phase 3 — RWF-2000 Temporal Transformer
 
+## Trạng thái local — 07/10/2026
+
+Phần implementation và validation không cần dataset thật đã hoàn thành trên local:
+
+- Đã thêm `ResNet18TemporalTransformer` với sinusoidal positional encoding, Transformer Encoder 2 lớp/4 heads, FFN 1024, dropout 0.1, pre-norm, temporal mean pooling và classifier `Linear(512 -> 1)`.
+- Đã giữ backbone ResNet18 frozen và BatchNorm ở eval mode trong run đầu.
+- Config, CLI train/evaluate và checkpoint provenance đã dispatch theo architecture; Transformer không dùng nhầm checkpoint baseline.
+- Phase 3 config khóa manifest SHA-256 `a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2`.
+- Full local suite: `81 passed`, `7 warnings`. Các warning đều là thông báo PyTorch về nested-tensor optimization khi `norm_first=True`, không phải test failure.
+- CPU synthetic smoke bằng ResNet18 `weights=None` đã pass: output `[2]` hữu hạn; backbone không có gradient; Transformer và classifier đều cập nhật sau một optimization step.
+- Không chạy real-batch, overfit, pilot, full training hoặc held-out test trên local.
+
+Chưa có metric Transformer. Mọi Kaggle gate và kết quả Phase 3 bên dưới vẫn đang chờ thực hiện.
+
 ## 0. Điểm xuất phát đã khóa
 
 Phase 2 ResNet18 + temporal average baseline đã hoàn thành trên Kaggle ngày 07/10/2026.
@@ -189,8 +203,8 @@ Báo cáo tối thiểu:
 
 ## 8. Definition of Done
 
-- [ ] Model contract và positional encoding có tests.
-- [ ] Full local suite pass.
+- [x] Model contract và positional encoding có tests.
+- [x] Full local suite pass.
 - [ ] Real-batch forward pass.
 - [ ] One-batch overfit pass.
 - [ ] Pilot pass.
