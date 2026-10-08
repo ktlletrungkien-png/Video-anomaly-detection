@@ -1,0 +1,79 @@
+{
+  "activation": "gelu",
+  "architecture": "ResNet18TemporalTransformer",
+  "architecture_version": "v1",
+  "batch_size": 4,
+  "checkpoint_rule": "min_validation_loss_earliest_tie",
+  "class_counts": {
+    "train": {
+      "Non-violence": 640,
+      "Violence": 640
+    },
+    "val": {
+      "Non-violence": 160,
+      "Violence": 160
+    }
+  },
+  "dataset_root": "/kaggle/input/datasets/daniazehra/rwf-2000/RWF-2000",
+  "deterministic": true,
+  "device": "cuda",
+  "dim_feedforward": 1024,
+  "dropout": 0.1,
+  "epochs": 5,
+  "expected_manifest_sha256": "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2",
+  "feature_dim": 512,
+  "freeze_backbone": true,
+  "height": 224,
+  "learning_rate": 0.001,
+  "loss": "BCEWithLogitsLoss",
+  "manifest_path": "/kaggle/input/notebooks/b23dccn461ltrungkin/rwf-2000-phase-1/rwf2000_phase1/rwf2000_manifest.csv",
+  "manifest_sha256": "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2",
+  "max_sequence_length": 16,
+  "nhead": 4,
+  "norm_first": true,
+  "num_frames": 16,
+  "num_layers": 2,
+  "num_workers": 2,
+  "optimizer": {
+    "learning_rate": 0.001,
+    "name": "AdamW",
+    "weight_decay": 0.0001
+  },
+  "positional_encoding_type": "sinusoidal",
+  "preprocess": {
+    "brightness_delta": 0.1,
+    "contrast_range": [
+      0.9,
+      1.1
+    ],
+    "crop_scale": [
+      0.9,
+      1.0
+    ],
+    "height": 224,
+    "horizontal_flip_prob": 0.5,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "width": 224
+  },
+  "purpose": "phase3_kaggle_full_transformer",
+  "seed": 42,
+  "source_split_semantics": {
+    "derived_test": "source val held out",
+    "derived_train": "source train",
+    "derived_val": "source train"
+  },
+  "temporal_pooling": "mean",
+  "threshold_rule": "maximize Violence F1; tie-break by Violence recall; remaining ties choose smallest threshold",
+  "weight_decay": 0.0001,
+  "weights": "DEFAULT",
+  "width": 224
+}

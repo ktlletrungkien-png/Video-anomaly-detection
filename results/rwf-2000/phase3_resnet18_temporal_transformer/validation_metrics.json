@@ -1,0 +1,52 @@
+{
+  "accuracy": 0.75625,
+  "architecture": "ResNet18TemporalTransformer",
+  "architecture_contract": {
+    "activation": "gelu",
+    "architecture": "ResNet18TemporalTransformer",
+    "architecture_version": "v1",
+    "dim_feedforward": 1024,
+    "dropout": 0.1,
+    "feature_dim": 512,
+    "freeze_backbone": true,
+    "max_sequence_length": 16,
+    "nhead": 4,
+    "norm_first": true,
+    "num_layers": 2,
+    "positional_encoding_type": "sinusoidal",
+    "temporal_pooling": "mean"
+  },
+  "best_epoch": 4,
+  "best_val_loss": 0.4684454133734107,
+  "checkpoint_sha256": "4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001",
+  "class_counts": {
+    "Non-violence": 160,
+    "Violence": 160
+  },
+  "class_support": {
+    "Non-violence": 160,
+    "Violence": 160
+  },
+  "confusion_matrix": [
+    [
+      89,
+      71
+    ],
+    [
+      7,
+      153
+    ]
+  ],
+  "evaluation_loss": 0.4684454133734107,
+  "evaluation_split": "derived_val",
+  "f1": 0.796875,
+  "manifest_sha256": "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2",
+  "precision": 0.6830357142857143,
+  "recall": 0.95625,
+  "roc_auc": 0.8663671875000001,
+  "run_id": "4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001",
+  "selection_split": "validation",
+  "support": 320,
+  "threshold": 0.17900283634662628,
+  "validation_predictions_sha256": "34bb185461c2ab257e0ad612fc8e808050757b80e801029dc1cdc3dd84e13488"
+}

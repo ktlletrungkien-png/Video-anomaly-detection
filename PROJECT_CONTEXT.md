@@ -3,7 +3,7 @@
 ## Hệ thống giám sát phát hiện bạo lực và bất thường trong video CCTV
 
 > Tài liệu tổng hợp bối cảnh, mục tiêu, quyết định kỹ thuật, đánh giá kế hoạch và trạng thái thực tế của dự án.  
-> Cập nhật gần nhất: 07/10/2026.
+> Cập nhật gần nhất: 08/10/2026.
 > Nội dung và sản phẩm presentation được chủ động loại khỏi tài liệu này.
 
 ---
@@ -341,24 +341,26 @@ Dự án được xem là đạt mục tiêu tối thiểu khi:
 
 **Cập nhật ngày 07/10/2026:** Phase 2 RWF-2000 baseline đã hoàn thành trên Kaggle; Gate A-G đều pass. Model là pretrained frozen ResNet18 + temporal average pooling, train 5 epochs trên 1.280 derived-train clips, chọn checkpoint/threshold bằng 320 derived-validation clips và chỉ sau khi khóa mới evaluate 400 derived-test clips. Held-out result đo được: Accuracy `0.74`, Precision `0.712389`, Recall `0.805`, F1 `0.755869`, ROC-AUC `0.814525`; confusion matrix `[[135,65],[39,161]]`. Threshold validation là `0.4555857181549072`. Đây là kết quả project đã đo, không phải target; accuracy thấp hơn planning target tối thiểu 75% một điểm phần trăm. Không được retune bằng test set hoặc chạy lại test để chọn kết quả đẹp hơn.
 
-Implementation local cho Phase 3 `ResNet18 + Temporal Transformer` cũng đã hoàn thành và được kiểm tra không cần dataset thật. Kiến trúc khởi đầu dùng sinusoidal positional encoding, 2 Transformer layers, 4 attention heads, FFN 1024, dropout 0.1, pre-norm và mean pooling; frozen ResNet18/BatchNorm giữ eval mode. Full local suite đạt `81 passed`, `7 warnings`; CPU synthetic smoke xác nhận logits hữu hạn, backbone không nhận gradient, Transformer và classifier cập nhật sau một optimization step. Chưa chạy Kaggle gates, chưa train Transformer trên RWF-2000 và chưa có metric Phase 3.
+**Cập nhật ngày 08/10/2026:** Phase 3 `ResNet18 + Temporal Transformer` đã hoàn thành full training và fixed-threshold held-out evaluation trên Kaggle bằng commit `ff59202d4e8db05509c0d6fe916b0e9661beba7e`. Kiến trúc dùng sinusoidal positional encoding, 2 Transformer layers, 4 attention heads, FFN 1024, dropout 0.1, pre-norm và mean pooling; ResNet18/BatchNorm frozen. Best checkpoint là epoch 4, checkpoint SHA-256 `4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001`; threshold validation là `0.17900283634662628`.
+
+Held-out Phase 3 đo được: Accuracy `0.7475`, Precision `0.684015`, Recall `0.92`, F1 `0.784648`, ROC-AUC `0.838975`; confusion matrix `[[115,85],[16,184]]`. So với baseline, Accuracy tăng `0.0075`, Recall tăng `0.115`, F1 tăng `0.028780`, ROC-AUC tăng `0.024450`, nhưng Precision giảm `0.028375`. Transformer giảm false negatives từ 39 xuống 16 nhưng tăng false positives từ 65 lên 85. Accuracy vẫn thấp hơn planning target tối thiểu 75% đúng 0,25 điểm phần trăm. Đây là held-out result chính thức; không được retune threshold/model bằng test labels.
 
 Việc cần làm tiếp theo:
 
-1. Push commit implementation Phase 3 lên remote để Kaggle checkout đúng code đã kiểm tra.
-2. Trên Kaggle, chạy Gate A tests/environment, Gate B real-batch forward, Gate C one-batch overfit và Gate D pilot 1 epoch; chưa mở derived test.
-3. Chỉ khóa full-training config bằng evidence từ derived train/validation; không dùng baseline test errors hoặc Transformer test labels để tune.
-4. Chạy Gate E full Transformer training, chọn best checkpoint và threshold chỉ bằng derived validation.
-5. Evaluate Transformer held-out test đúng một lần ở Gate F sau khi config/checkpoint/threshold đã khóa.
-6. So sánh baseline và Transformer bằng Accuracy, Precision, Recall, F1, ROC-AUC, confusion matrix và failure cases.
-7. Sau khi nhánh violence chính ổn định, xây normal profile nhẹ riêng cho Ped2 rồi Avenue.
-8. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.
+1. Xác nhận `best_checkpoint.pth` Phase 3 đã được backup ngoài Git và khớp SHA-256 đã ghi; checkpoint không có trong thư mục artifact local hiện tại.
+2. Phân tích qualitative false positives/false negatives của baseline và Transformer mà không retune bằng test labels.
+3. Xây normal profile nhẹ riêng cho Ped2 rồi Avenue, sau đó đánh giá theo split riêng của từng dataset.
+4. Tích hợp hai nhánh vào demo lai, thêm temporal smoothing, event rule, alert/log và saved clip.
+5. Đo inference latency, FPS, event-level recall và false alarms/hour trên video demo.
+6. Chỉ xem partial backbone fine-tuning là post-hoc exploratory follow-up; không thay thế held-out result Phase 3 hiện tại bằng một kết quả đã được chọn sau khi xem test.
+7. Chỉ cân nhắc mô hình anomaly lớn khi hai nhánh cơ sở, evaluation và demo đã ổn định.
 
 Tài liệu chi tiết:
 
 - `PHASE2_RWF2000_BASELINE_PLAN.md`.
 - `results/rwf-2000/phase2_resnet18_temporal_avg/README.md`.
 - `PHASE3_RWF2000_TEMPORAL_TRANSFORMER_PLAN.md`.
+- `results/rwf-2000/phase3_resnet18_temporal_transformer/README.md`.
 
 ---
 

@@ -1,0 +1,61 @@
+{
+  "accuracy": 0.7475,
+  "architecture": "ResNet18TemporalTransformer",
+  "architecture_contract": {
+    "activation": "gelu",
+    "architecture": "ResNet18TemporalTransformer",
+    "architecture_version": "v1",
+    "dim_feedforward": 1024,
+    "dropout": 0.1,
+    "feature_dim": 512,
+    "freeze_backbone": true,
+    "max_sequence_length": 16,
+    "nhead": 4,
+    "norm_first": true,
+    "num_layers": 2,
+    "positional_encoding_type": "sinusoidal",
+    "temporal_pooling": "mean"
+  },
+  "best_epoch": 4,
+  "best_val_loss": 0.4684454133734107,
+  "checkpoint_sha256": "4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001",
+  "class_counts": {
+    "Non-violence": 200,
+    "Violence": 200
+  },
+  "class_support": {
+    "Non-violence": 200,
+    "Violence": 200
+  },
+  "confusion_matrix": [
+    [
+      115,
+      85
+    ],
+    [
+      16,
+      184
+    ]
+  ],
+  "evaluation_loss": 0.5389096808433532,
+  "evaluation_split": "derived_test",
+  "f1": 0.7846481876332623,
+  "manifest_sha256": "a4215a6c67418b8c3c3a7c806bec64cfbeaeb39765c38b5000880898453df3b2",
+  "precision": 0.6840148698884758,
+  "recall": 0.92,
+  "roc_auc": 0.838975,
+  "run_context": {
+    "checkpoint_path": "/kaggle/working/rwf2000_phase3_full/best_checkpoint.pth",
+    "dataset_root": "/kaggle/input/datasets/daniazehra/rwf-2000/RWF-2000",
+    "manifest_path": "/kaggle/input/notebooks/b23dccn461ltrungkin/rwf-2000-phase-1/rwf2000_phase1/rwf2000_manifest.csv",
+    "source_split_semantics": {
+      "derived_test": "source val held out"
+    },
+    "threshold_path": "/kaggle/working/rwf2000_phase3_full/selected_threshold.json"
+  },
+  "run_id": "4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001",
+  "support": 400,
+  "threshold": 0.17900283634662628,
+  "threshold_sha256": "3ca16b784b83b3b8e96363081d789310901716395fa38173d9759bb5f0baab10",
+  "threshold_source": "validation"
+}

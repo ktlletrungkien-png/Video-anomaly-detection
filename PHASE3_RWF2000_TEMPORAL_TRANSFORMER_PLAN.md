@@ -1,6 +1,6 @@
 # Phase 3 — RWF-2000 Temporal Transformer
 
-## Trạng thái local — 07/10/2026
+## Trạng thái — 08/10/2026
 
 Phần implementation và validation không cần dataset thật đã hoàn thành trên local:
 
@@ -12,7 +12,23 @@ Phần implementation và validation không cần dataset thật đã hoàn thà
 - CPU synthetic smoke bằng ResNet18 `weights=None` đã pass: output `[2]` hữu hạn; backbone không có gradient; Transformer và classifier đều cập nhật sau một optimization step.
 - Không chạy real-batch, overfit, pilot, full training hoặc held-out test trên local.
 
-Chưa có metric Transformer. Mọi Kaggle gate và kết quả Phase 3 bên dưới vẫn đang chờ thực hiện.
+Full training và fixed-threshold held-out evaluation đã hoàn thành trên Kaggle bằng commit `ff59202d4e8db05509c0d6fe916b0e9661beba7e`.
+
+Kết quả derived test chính thức:
+
+| Metric | Giá trị |
+|---|---:|
+| Accuracy | 0.747500 |
+| Precision | 0.684015 |
+| Recall | 0.920000 |
+| F1 | 0.784648 |
+| ROC-AUC | 0.838975 |
+
+Threshold Transformer được chọn từ validation là `0.17900283634662628`; confusion matrix test là `[[115,85],[16,184]]`. Best checkpoint ở epoch 4, SHA-256 `4fcb2038d5aa485e500cd17dcfc254f258b7469801e26ad8549ae6bb1e2c7001`.
+
+So với baseline, Transformer tăng Accuracy `0.0075`, Recall `0.115`, F1 `0.028780` và ROC-AUC `0.024450`, nhưng Precision giảm `0.028375`. Kết quả chưa đạt planning target Accuracy; không được retune bằng test labels.
+
+Source of truth cho artifacts và phân tích: `results/rwf-2000/phase3_resnet18_temporal_transformer/README.md`.
 
 ## 0. Điểm xuất phát đã khóa
 
@@ -208,9 +224,11 @@ Báo cáo tối thiểu:
 - [ ] Real-batch forward pass.
 - [ ] One-batch overfit pass.
 - [ ] Pilot pass.
-- [ ] Full training hoàn thành trên derived train.
-- [ ] Best checkpoint và threshold chỉ dùng derived validation.
-- [ ] Final test chạy sau khi khóa config.
-- [ ] Artifacts nhẹ và provenance được lưu.
-- [ ] So sánh công bằng với baseline Phase 2.
-- [ ] Không có test-label leakage hoặc unsupported metric claims.
+- [x] Full training hoàn thành trên derived train.
+- [x] Best checkpoint và threshold chỉ dùng derived validation.
+- [x] Final test chạy sau khi khóa config.
+- [x] Artifacts nhẹ và provenance được lưu.
+- [x] So sánh công bằng với baseline Phase 2.
+- [x] Không có test-label leakage hoặc unsupported metric claims.
+
+Ba gate real-batch, one-batch overfit và pilot chưa được đánh dấu vì log riêng của các gate này chưa được copy vào repo cùng full-run artifacts.
